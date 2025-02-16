@@ -1,0 +1,6 @@
+when docker stop is called
+
+https://docs.docker.com/reference/cli/docker/container/stop/
+https://docs.docker.com/reference/cli/docker/container/kill/#
+
+The main process in the container receives SIGTERM signal

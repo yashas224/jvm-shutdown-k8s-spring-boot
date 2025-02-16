@@ -1,0 +1,187 @@
+# docker image - dockerfile-running-bash-script.Dockerfile
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: app-poc-deployment-bash
+  labels:
+    app: app-poc
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: app-poc
+  template:
+    metadata:
+      labels:
+        app: app-poc
+    spec:
+      containers:
+        - name: data-jpa-poc-bash
+          image: data-jpa-poc-bash
+          env:
+            - name: MYSQL_HOST_PARAM
+              value: "mysql"
+            - name: MY_NODE_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: spec.nodeName
+            - name: MY_POD_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.name
+            - name: MY_POD_NAMESPACE
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.namespace
+            - name: MY_POD_IP
+              valueFrom:
+                fieldRef:
+                  fieldPath: status.podIP
+          imagePullPolicy: Never
+          ports:
+            - containerPort: 8080
+              name: app-poc-port
+
+
+---
+
+apiVersion: v1
+kind: Service
+metadata:
+  name: app-poc-service
+spec:
+  selector:
+    app: app-poc
+  ports:
+    - protocol: TCP
+      port: 8080
+      targetPort: app-poc-port
+  type: LoadBalancer
+
+
+---
+
+apiVersion: v1
+kind: Service
+metadata:
+  name: mysql
+spec:
+  ports:
+    - port: 3306
+  selector:
+    app: mysql
+  clusterIP: None
+
+---
+#use mysql service name  in adminer portal
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: mysql
+spec:
+  selector:
+    matchLabels:
+      app: mysql
+  strategy:
+    type: Recreate
+  template:
+    metadata:
+      labels:
+        app: mysql
+    spec:
+      containers:
+        - image: mysql:5.6
+          name: mysql
+          env:
+            # Use secret in real usage
+            - name: MYSQL_ROOT_PASSWORD
+              value: password
+            - name: MYSQL_DATABASE
+              value: 'app-datastore'
+          ports:
+            - containerPort: 3306
+              name: mysql
+          volumeMounts:
+            - name: mysql-persistent-storage
+              mountPath: /var/lib/mysql
+      volumes:
+        - name: mysql-persistent-storage
+          persistentVolumeClaim:
+            claimName: mysql-pv-claim
+
+
+---
+
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: mysql-pv-volume
+  labels:
+    type: local
+spec:
+  storageClassName: manual
+  capacity:
+    storage: 20Gi
+  accessModes:
+    - ReadWriteOnce
+  hostPath:
+    path: "/mnt/data"
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: mysql-pv-claim
+spec:
+  storageClassName: manual
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 20Gi
+
+
+
+---
+
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: adminer
+  labels:
+    app: adminer
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: adminer
+  template:
+    metadata:
+      labels:
+        app: adminer
+    spec:
+      containers:
+        - name: adminer
+          image: adminer
+          ports:
+            - containerPort: 8080
+              name: adminer
+
+
+---
+
+apiVersion: v1
+kind: Service
+metadata:
+  name: adminer
+spec:
+  selector:
+    app: adminer
+  ports:
+    - protocol: TCP
+      port: 8085
+      targetPort: adminer
+  type: LoadBalancer
+

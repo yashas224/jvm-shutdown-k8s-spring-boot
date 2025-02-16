@@ -1,0 +1,63 @@
+1- when app-deployment.yaml is deployed - docker image - Dockerfile
+
+processes inside the application container:
+kubectl exec -it <podName> -- sh
+ ps -A
+
+PID   USER     TIME  COMMAND
+    1 root      0:13 java -jar /app.jar
+   75 root      0:00 sh
+   82 root      0:00 ps -A
+/ #
+
+As we can see, the main java application is in the main process with PID 1.
+
+// refs
+Process 1 in Linux is the init process,
+which is responsible for starting and shutting down the system. It's also known as the process with the process ID (PID) of 1.
+
+
+when pod terminates , SIGTERM is sent to main process of container by kubelet
+https://kubernetes.io/docs/concepts/workloads/pods/pod-lifecycle/
+
+JVM running in the main processes uses it to trigger shutdown hooks
+https://docs.oracle.com/en/java/javase/21/troubleshoot/handle-signals-and-exceptions.html#GUID-CBA7BA16-F89F-4BE2-B653-139BABA997D4
+
+Pod logs when pod  is deleted using kubectl delete
+
+2025-02-09T19:08:40.064Z  INFO 1 --- [data-jpa-poc] [       Thread-1] c.e.p.d.controller.AppController         : app-poc-deployment-6f85844966-5fstp addShutdownHook
+Hibernate: insert into person (name) values (?)
+2025-02-09T19:08:40.068Z  INFO 1 --- [data-jpa-poc] [ionShutdownHook] o.s.b.w.e.tomcat.GracefulShutdown        : Commencing graceful shutdown. Waiting for active requests to complete
+2025-02-09T19:08:40.073Z  INFO 1 --- [data-jpa-poc] [tomcat-shutdown] o.s.b.w.e.tomcat.GracefulShutdown        : Graceful shutdown complete
+test destroy
+2025-02-09T19:08:40.077Z  INFO 1 --- [data-jpa-poc] [ionShutdownHook] c.e.p.d.controller.AppController         : app-poc-deployment-6f85844966-5fstp cleanUpController
+Hibernate: insert into person (name) values (?)
+2025-02-09T19:08:40.079Z  INFO 1 --- [data-jpa-poc] [ionShutdownHook] j.LocalContainerEntityManagerFactoryBean : Closing JPA EntityManagerFactory for persistence unit 'default'
+2025-02-09T19:08:40.080Z  INFO 1 --- [data-jpa-poc] [ionShutdownHook] com.zaxxer.hikari.HikariDataSource       : HikariPool-1 - Shutdown initiated...
+2025-02-09T19:08:40.082Z  INFO 1 --- [data-jpa-poc] [ionShutdownHook] com.zaxxer.hikari.HikariDataSource       : HikariPool-1 - Shutdown completed.
+
+Both Java registered and spring registered shutdown hooks are invoked.
+
+------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+
+2- when app-deployment-bash-script.yaml is deployed - docker image - dockerfile-running-bash-script.Dockerfile
+
+process inside application container
+
+/ # ps -A
+PID   USER     TIME  COMMAND
+    1 root      0:00 /bin/sh /script/startContainer.sh
+    7 root      0:16 java -jar app.jar
+   68 root      0:00 sh
+   75 root      0:00 ps -A
+/ #
+
+As we can see the main process thats the PID 1 process is a bash script.
+java application is child process that is run from main process.
+
+SIGTERM signal kublet sends to the container is sent to main process , bash script and is not sent to child process.
+
+Pod logs when pod  is deleted using kubectl delete
+
+No shutdown logs are displayed after deletion of pod as SIGTERM is not propagated into the java child process.

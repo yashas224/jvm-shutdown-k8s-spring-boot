@@ -1,0 +1,33 @@
+when running
+ docker run --env MYSQL_HOST_PARAM=host.docker.internal --env SPRING_PROFILES_ACTIVE=local  --env MY_POD_NAME=docker-container -p 8080:8080 data-jpa-poc
+
+
+logs when the docker container is stopped using docker stop <containerId>
+
+Hibernate: select (count(p1_0.id)>0) from person p1_0 where upper(p1_0.name) like replace(upper(?),'\\','\\\\')
+2025-02-08T15:26:37.767Z  INFO 1 --- [data-jpa-poc] [nio-8080-exec-2] c.e.p.d.controller.AppController         : APP LOG user found: NO
+Hibernate: select (count(p1_0.id)>0) from person p1_0 where upper(p1_0.name) like replace(upper(?),'\\','\\\\')
+2025-02-08T15:26:38.933Z  INFO 1 --- [data-jpa-poc] [nio-8080-exec-3] c.e.p.d.controller.AppController         : APP LOG user found: NO
+2025-02-08T15:28:10.697Z  INFO 1 --- [data-jpa-poc] [       Thread-1] c.e.p.d.controller.AppController         : docker-container addShutdownHook
+2025-02-08T15:28:10.698Z  INFO 1 --- [data-jpa-poc] [ionShutdownHook] o.s.b.w.e.tomcat.GracefulShutdown        : Commencing graceful shutdown. Waiting for active requests to complete
+Hibernate: insert into person (name) values (?)
+2025-02-08T15:28:10.701Z  INFO 1 --- [data-jpa-poc] [tomcat-shutdown] o.s.b.w.e.tomcat.GracefulShutdown        : Graceful shutdown complete
+test destroy
+2025-02-08T15:28:10.703Z  INFO 1 --- [data-jpa-poc] [ionShutdownHook] c.e.p.d.controller.AppController         : docker-container cleanUpController
+Hibernate: insert into person (name) values (?)
+2025-02-08T15:28:10.709Z  INFO 1 --- [data-jpa-poc] [ionShutdownHook] j.LocalContainerEntityManagerFactoryBean : Closing JPA EntityManagerFactory for persistence unit 'default'
+2025-02-08T15:28:10.710Z  INFO 1 --- [data-jpa-poc] [ionShutdownHook] com.zaxxer.hikari.HikariDataSource       : HikariPool-1 - Shutdown initiated...
+2025-02-08T15:28:10.712Z  INFO 1 --- [data-jpa-poc] [ionShutdownHook] com.zaxxer.hikari.HikariDataSource       : HikariPool-1 - Shutdown completed.
+
+
+both the JVM shutdown and Spring shutdown hook , @PreDestroy are invoked
+
+------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+while running
+
+ docker run --env MYSQL_HOST_PARAM=host.docker.internal --env MY_POD_NAME=docker-container --env SPRING_PROFILES_ACTIVE=local data-jpa-poc-bash
+
+
+JVM shutdown and Spring shutdown hook , @PreDestroy are not  invoked as the main process that starts the container is the bash script and the spring application is not the main process.
+SIGTERM signal is sent to the main process of container as per documantation and thus is lost and not traversed to spring boot process

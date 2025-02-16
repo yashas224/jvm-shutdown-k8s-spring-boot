@@ -1,0 +1,29 @@
+local execution of spring app
+
+clean install  spring app
+docker build -t data-jpa-poc .
+docker build -t data-jpa-poc-bash --file dockerfile-running-bash-script.Dockerfile .
+
+docker compose up
+docker run --env MYSQL_HOST_PARAM=host.docker.internal --env SPRING_PROFILES_ACTIVE=local  --env MY_POD_NAME=docker-container -p 8080:8080 data-jpa-poc
+docker run --env MYSQL_HOST_PARAM=host.docker.internal --env MY_POD_NAME=docker-container --env SPRING_PROFILES_ACTIVE=local data-jpa-poc-bash
+
+docker exec -it <container> bash
+and execute the curl
+
+// remove local image
+docker rmi
+
+
+// k8s
+
+kubectl get nodes
+kubectl apply -f <fileName>
+kubectl delete all --all
+
+
+use loadBalancer to expose it to host's localHost
+
+
+// exec into the pod
+kubectl exec -it <podName> -- sh
